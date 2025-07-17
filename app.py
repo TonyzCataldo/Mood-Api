@@ -27,7 +27,7 @@ app.config["UPLOAD_FOLDER"] = "uploads"
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 # 🌐 CORS configurado para ambiente correto
-app.config["CORS_ORIGINS"] = os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173")
+app.config["CORS_ORIGINS"] = os.environ.get("FRONTEND_ORIGIN", "https://mood-tracker-umber.vercel.app")
 CORS(app, resources={
     r"/*": {
         "origins": app.config["CORS_ORIGINS"],
