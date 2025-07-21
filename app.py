@@ -13,14 +13,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+
 # 🔹 Inicializa app Flask
 app = Flask(__name__)
+print("🔍 Conectando ao banco:", os.environ.get("DATABASE_URL"))
 
 # 🔐 Chave secreta do JWT (vem do ambiente)
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "default-key-para-dev")
 
 # 🔹 Configura banco de dados SQLite
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///usuarios.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 
 # 🔹 Configura pasta de upload
 app.config["UPLOAD_FOLDER"] = "uploads"
@@ -270,6 +273,9 @@ def ja_registrou_hoje():
 
     registro = Registro.query.filter_by(id_usuario=usuario_id, data=hoje).first()
     return jsonify({"ja_registrou": bool(registro)})
+
+
+
 
 # Executa app localmente
 if __name__ == "__main__":
