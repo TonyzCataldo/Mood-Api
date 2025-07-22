@@ -274,11 +274,7 @@ def ja_registrou_hoje():
     registro = Registro.query.filter_by(id_usuario=usuario_id, data=hoje).first()
     return jsonify({"ja_registrou": bool(registro)})
 
-@app.route("/reset-tabelas")
-def reset():
-    db.drop_all()
-    db.create_all()
-    return "✅ Tabelas recriadas"
+
 
 
 # Executa app localmente
