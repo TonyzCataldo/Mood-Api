@@ -55,7 +55,7 @@ jwt = JWTManager(app)
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    senha_hash = db.Column(db.String(128), nullable=False)
+    senha_hash = db.Column(db.String(512), nullable=False)
     nome = db.Column(db.String(100), default="User")
     imagem_url = db.Column(db.String(300))
     imagem_public_id = db.Column(db.String(200))
@@ -274,7 +274,11 @@ def ja_registrou_hoje():
     registro = Registro.query.filter_by(id_usuario=usuario_id, data=hoje).first()
     return jsonify({"ja_registrou": bool(registro)})
 
-
+@app.route("/reset-tabelas")
+def reset():
+    db.drop_all()
+    db.create_all()
+    return "✅ Tabelas recriadas"
 
 
 # Executa app localmente
