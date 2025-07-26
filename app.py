@@ -9,7 +9,9 @@ from datetime import date, timedelta
 import os
 import cloudinary
 import cloudinary.uploader
-from dotenv import load_dotenv 
+from dotenv import load_dotenv
+from datetime import datetime
+import pytz 
 
 load_dotenv()
 
@@ -146,7 +148,9 @@ def registrar_dados():
     usuario_id = int(get_jwt_identity())
     usuario = Usuario.query.get(usuario_id)
 
-    data_hoje = date.today()
+    br_tz = pytz.timezone("America/Sao_Paulo")
+    data_hoje = datetime.now(br_tz).date()
+
     humor = request.json.get("humor")
     como_se_sentiu = request.json.get("como_se_sentiu")
     descricao = request.json.get("descricao")
@@ -269,7 +273,8 @@ def upload_image():
 @jwt_required()
 def ja_registrou_hoje():
     usuario_id = int(get_jwt_identity())
-    hoje = date.today()
+    br_tz = pytz.timezone("America/Sao_Paulo")
+    hoje = datetime.now(br_tz).date()
 
     registro = Registro.query.filter_by(id_usuario=usuario_id, data=hoje).first()
     return jsonify({"ja_registrou": bool(registro)})
