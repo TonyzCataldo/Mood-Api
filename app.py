@@ -104,7 +104,7 @@ def login():
     if not usuario or not check_password_hash(usuario.senha_hash, senha):
         return jsonify({"msg": "Incorrect username or password."}), 401
 
-    token = create_access_token(identity=str(usuario.id), expires_delta=timedelta(seconds=30))
+    token = create_access_token(identity=str(usuario.id), expires_delta=timedelta(days=1))
     return jsonify({
         "token": token,
         "usuario_id": usuario.id,
