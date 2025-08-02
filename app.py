@@ -9,30 +9,42 @@ from datetime import date, timedelta
 import os
 import cloudinary
 import cloudinary.uploader
+from dotenv import load_dotenv 
 
-cloudinary.config(
-  cloud_name = "di8rehik4",
-  api_key = "267867258891191",
-  api_secret = "GQ9f_9NK-mAXYJKHsZ9-by8wIqQ"
-)
+load_dotenv()
 
+# 🔹 Inicializa app Flask
 app = Flask(__name__)
+
+# 🔐 Chave secreta do JWT (vem do ambiente)
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "default-key-para-dev")
+
+# 🔹 Configura banco de dados SQLite
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///usuarios.db"
+
+# 🔹 Configura pasta de upload
+app.config["UPLOAD_FOLDER"] = "uploads"
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+# 🌐 CORS configurado para ambiente correto
+app.config["CORS_ORIGINS"] = os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173")
 CORS(app, resources={
     r"/*": {
-        "origins": "http://localhost:5173",
+        "origins": app.config["CORS_ORIGINS"],
         "supports_credentials": True,
         "allow_headers": ["Content-Type", "Authorization"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     }
 })
 
-# Configurações
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///usuarios.db"
-app.config["JWT_SECRET_KEY"] = "sua-chave-secreta-aqui"
-app.config["UPLOAD_FOLDER"] = "uploads"
-os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+# ☁️ Cloudinary seguro
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET")
+)
 
-# Inicializa extensões
+# 🔧 Inicializa extensões
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
 
@@ -159,21 +171,17 @@ def registrar_dados():
     db.session.add(novo_registro)
     db.session.commit()
 
-    # 🔁 Manter apenas os últimos 11 dias únicos registrados
+    # ✅ Limita aos últimos 11 registros
     registros = (
         Registro.query.filter_by(id_usuario=usuario_id)
-        .order_by(Registro.data.desc())
+        .order_by(Registro.id.desc())
         .all()
     )
 
-    dias_unicos = list({r.data for r in registros})
-    dias_unicos.sort(reverse=True)
-
-    if len(dias_unicos) > 11:
-        dias_a_manter = set(dias_unicos[:11])
-        for r in registros:
-            if r.data not in dias_a_manter:
-                db.session.delete(r)
+    if len(registros) > 11:
+        registros_a_deletar = registros[11:]  # mantém os 11 mais recentes
+        for r in registros_a_deletar:
+            db.session.delete(r)
         db.session.commit()
 
     return jsonify({"msg": "Registro salvo com sucesso."}), 201
@@ -183,41 +191,27 @@ def registrar_dados():
 @jwt_required()
 def obter_registros():
     usuario_id = int(get_jwt_identity())
-    hoje = date.today()
 
-    # Últimos 11 dias incluindo hoje
-    ultimos_dias = [hoje - timedelta(days=i) for i in range(11)]
-    ultimos_dias.reverse()  # Do mais antigo pro mais recente
-
-    # Busca registros existentes no banco
     registros = (
         Registro.query
-        .filter(Registro.id_usuario == usuario_id, Registro.data.in_(ultimos_dias))
+        .filter_by(id_usuario=usuario_id)
+        .order_by(Registro.data.desc())
+        .limit(11)
         .all()
     )
 
-    # Indexa por data para lookup rápido
-    registros_por_data = {r.data: r for r in registros}
+    resultado = [
+        {
+            "data": r.data.strftime("%Y-%m-%d"),
+            "humor": r.humor,
+            "como_se_sentiu": r.como_se_sentiu,
+            "descricao": r.descricao,
+            "horas_sono": r.horas_sono,
+        }
+        for r in registros
+    ]
 
-    # Cria resposta sempre com os 11 dias
-    resultado = []
-    for dia in ultimos_dias:
-        r = registros_por_data.get(dia)
-        resultado.append({
-            "data": dia.strftime("%Y-%m-%d"),
-            "humor": r.humor if r else None,
-            "como_se_sentiu": r.como_se_sentiu if r else None,
-            "descricao": r.descricao if r else None,
-            "horas_sono": r.horas_sono if r else None,
-        })
-
-    # 🧹 Deleta registros fora dos últimos 11 dias
-    Registro.query.filter(
-        Registro.id_usuario == usuario_id,
-        Registro.data.notin_(ultimos_dias)
-    ).delete(synchronize_session=False)
-    db.session.commit()
-
+    resultado.reverse()  # do mais antigo para o mais recente
     return jsonify(resultado), 200
 
 
